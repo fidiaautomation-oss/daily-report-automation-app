@@ -1,0 +1,142 @@
+asp_sites:
+  felmat_f:
+    type: "felmat"
+    url: "${ASP_FELMATF_URL}"
+    username: "${ASP_FELMATF_USERNAME}"
+    password: "${ASP_FELMATF_PASSWORD}"
+    csv_filename_pattern: "conversion.*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "年月日"
+    output_filename: "felmat_f.csv"
+
+  felmat_m:
+    type: "felmat"
+    url: "${ASP_FELMATM_URL}"
+    username: "${ASP_FELMATM_USERNAME}"
+    password: "${ASP_FELMATM_PASSWORD}"
+    csv_filename_pattern: "conversion.*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "年月日"
+    output_filename: "felmat_m.csv"
+
+  rentracks:
+    type: "rentracks"
+    url: "${ASP_RENTRACKS_URL}"
+    username: "${ASP_RENTRACKS_USERNAME}"
+    password: "${ASP_RENTRACKS_PASSWORD}"
+    csv_filename_pattern: "data.csv"
+    csv_encoding: "shift_jis"
+    date_column: "日付"
+    output_filename: "rentracks.csv"
+
+  affiliateb:
+    type: "affiliateb"
+    url: "${ASP_AFFILIATEB_URL}"
+    username: "${ASP_AFFILIATEB_USERNAME}"
+    password: "${ASP_AFFILIATEB_PASSWORD}"
+    csv_filename_pattern: "*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "年月日"
+    output_filename: "affiliateb.csv"
+
+  accesstrade:
+    type: "accesstrade"
+    url: "${ASP_ACCESSTRADE_URL}"
+    username: "${ASP_ACCESSTRADE_USERNAME}"
+    password: "${ASP_ACCESSTRADE_PASSWORD}"
+    csv_filename_pattern: "accesstrade_measure_*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "年月日"
+    output_filename: "accesstrade.csv"
+
+  a8net_a:
+    type: "a8net"
+    url: "${ASP_A8NETA_URL}"
+    username: "${ASP_A8NETA_USERNAME}"
+    password: "${ASP_A8NETA_PASSWORD}"
+    csv_filename_pattern: "parameter_*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "注文日"
+    output_filename: "a8net_a.csv"
+
+  a8net_b:
+    type: "a8net"
+    url: "${ASP_A8NETB_URL}"
+    username: "${ASP_A8NETB_USERNAME}"
+    password: "${ASP_A8NETB_PASSWORD}"
+    csv_filename_pattern: "parameter_*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "注文日"
+    output_filename: "a8net_b.csv"
+
+  funny:
+    type: "funny"
+    url: "${ASP_FUNNY_URL}"
+    username: "${ASP_FUNNY_USERNAME}"
+    password: "${ASP_FUNNY_PASSWORD}"
+    csv_filename_pattern: "funny_*.csv"
+    csv_encoding: "utf-8"
+    date_column: "発生日時"
+    output_filename: "funny.csv"
+
+  # invahamo は現在使用しない（INVGOLDと統合済み）
+  invahamo:
+    type: "invahamo"
+    url: "${ASP_INVAHAMO_URL}"
+    username: "${ASP_INVAHAMO_USERNAME}"
+    password: "${ASP_INVAHAMO_PASSWORD}"
+    csv_filename_pattern: "trade_report_*.csv"
+    csv_encoding: "utf-16"
+    csv_sep: "\t"
+    date_column: "購入日時"
+    output_filename: "invahamo.csv"
+
+  invgold:
+    type: "invgold"
+    url: "${ASP_INVGOLD_URL}"
+    username: "${ASP_INVGOLD_USERNAME}"
+    password: "${ASP_INVGOLD_PASSWORD}"
+    csv_filename_pattern: "*action_log_raw_*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "発生日時"
+    output_filename: "invgold.csv"
+
+  linkshare:
+    type: "linkshare"
+    url: "${ASP_LINKSHARE_URL}"
+    username: "${ASP_LINKSHARE_USERNAME}"
+    password: "${ASP_LINKSHARE_PASSWORD}"
+    csv_filename_pattern: "linkshare_*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "成果発生日時"
+    output_filename: "linkshare.csv"
+
+  sonic:
+    type: "sonic"
+    url: "${ASP_SONIC_URL}"
+    username: "${ASP_SONIC_USERNAME}"
+    password: "${ASP_SONIC_PASSWORD}"
+    csv_filename_pattern: "*action_log_raw_*.csv"
+    csv_encoding: "shift_jis"
+    date_column: "発生日時"
+    output_filename: "sonic.csv"
+
+  resultplus2:
+    type: "resultplus2"
+    url: "${ASP_RESULTPLUS2_URL}"
+    username: "${ASP_RESULTPLUS2_USERNAME}"
+    password: "${ASP_RESULTPLUS2_PASSWORD}"
+    csv_filename_pattern: "獲得ログ*.csv"
+    csv_encoding: "utf-8-sig"
+    date_column: "注文日時"
+    output_filename: "resultplus2.csv"
+
+  fukuro:
+    type: "fukuro"
+    url: "${ASP_FUKURO_URL}"
+    username: "${ASP_FUKURO_USERNAME}"
+    password: "${ASP_FUKURO_PASSWORD}"
+    csv_filename_pattern: "*conversion_referrer_*.csv"
+    csv_encoding: "utf-8-sig"
+    date_column: "date"
+    output_filename: "fukuro.csv"

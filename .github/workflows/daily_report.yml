@@ -1,0 +1,48 @@
+name: Daily Report - Yahoo & Google (Cloud)
+
+# Yahoo広告・Google広告のデータ取得をクラウドで毎朝実行する。
+# ASPスクレイピング（Playwright）はクラウドIPブロックの懸念があるためローカル実行のまま。
+#
+# 必要なGitHub Secrets:
+#   GOOGLE_OAUTH_TOKEN_JSON  … credentials/token.json の中身そのまま（JSON文字列）
+#   DRIVE_ROOT_FOLDER_ID     … Drive保存先ルートフォルダID
+#   GOOGLE_ADS_SHEET_ID      … Google Ads Scripts 出力先スプレッドシートID
+#   YAHOO_ADS_CLIENT_ID      … Yahoo広告API クライアントID
+#   YAHOO_ADS_CLIENT_SECRET  … Yahoo広告API クライアントシークレット
+#   YAHOO_ADS_REFRESH_TOKENS … ビジネスIDごとのリフレッシュトークン（カンマ区切り）
+
+on:
+  schedule:
+    - cron: '0 23 * * *'   # 日本時間 毎朝 08:00（UTC 前日 23:00）
+  workflow_dispatch:        # 手動実行
+
+env:
+  GOOGLE_OAUTH_TOKEN_JSON: ${{ secrets.GOOGLE_OAUTH_TOKEN_JSON }}
+  DRIVE_ROOT_FOLDER_ID: ${{ secrets.DRIVE_ROOT_FOLDER_ID }}
+  GOOGLE_ADS_SHEET_ID: ${{ secrets.GOOGLE_ADS_SHEET_ID }}
+  YAHOO_ADS_CLIENT_ID: ${{ secrets.YAHOO_ADS_CLIENT_ID }}
+  YAHOO_ADS_CLIENT_SECRET: ${{ secrets.YAHOO_ADS_CLIENT_SECRET }}
+  YAHOO_ADS_REFRESH_TOKENS: ${{ secrets.YAHOO_ADS_REFRESH_TOKENS }}
+
+jobs:
+  fetch-ads:
+    name: Yahoo・Google広告データ取得
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: 依存パッケージインストール
+        # ASPは実行しないため Playwright のブラウザは不要
+        run: pip install -r requirements.txt
+
+      - name: Google広告データ取得 → Drive保存
+        run: python -m phase1.google_ads_fetcher
+
+      - name: Yahoo広告データ取得 → Drive保存
+        run: python -m phase1.yahoo_ads_fetcher

@@ -1,0 +1,15 @@
+sheet_name: "日報"
+data_start_row: 5
+mappings:
+  - csv_col: "date"
+    excel_col: "B"
+  - csv_col: "campaign"
+    excel_col: "C"
+  - csv_col: "clicks"
+    excel_col: "F"
+  - csv_col: "cv_count"
+    excel_col: "H"
+  - csv_col: "cost"
+    excel_col: "J"
+  - csv_col: "cpa"
+    excel_col: "K"

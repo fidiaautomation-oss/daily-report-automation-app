@@ -1,0 +1,24 @@
+# 機密情報（絶対にコミットしない）
+.env
+.env.*
+!.env.example
+credentials/
+*token*.json
+*client_secret*.json
+service_account*.json
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store
+
+# Claude Code の作業ファイル（worktreesや他プロジェクトの埋め込みリポを含む）
+.claude/
+github/
+
+# ダウンロード一時ファイル
+data/raw/
+downloads/

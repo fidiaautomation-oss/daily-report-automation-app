@@ -1,0 +1,104 @@
+# raw CSV → 統一スキーマ変換定義
+#
+# シートのASP名（DBタブ）ごとに、対応するrawファイルと列名マッピングを定義する。
+# 列名は実CSVのヘッダー（2026-06-07実測）に基づく。
+#   date_col:   成果発生日時に相当する列
+#   case_col:   案件名に相当する列（シートの「案件名」と完全一致で突合）
+#   site_col:   サイトIDに相当する列（無いASPは省略）
+#   reward_col: 報酬額に相当する列（無いASPは省略 → 0扱い）
+#   promo_id_col:  案件ID（プロモーションID/プログラムID等）に相当する列（無いASPは省略）
+#   site_name_col: サイト名に相当する列（無いASPは省略）
+
+asp_normalize:
+  A8.net:
+    files: [a8net_a.csv, a8net_b.csv]
+    encoding: cp932
+    date_col: "注文日"
+    case_col: "プログラム名"
+    promo_id_col: "プログラムID"
+    reward_col: "発生金額"
+
+  アクセストレード:
+    files: [accesstrade.csv]
+    encoding: cp932
+    date_col: "発生日"
+    case_col: "プログラム名"
+    promo_id_col: "プログラムID"
+    reward_col: "報酬"
+
+  afb:
+    files: [affiliateb.csv]
+    encoding: cp932
+    date_col: "売上日時"
+    case_col: "プロダクト"
+    site_col: "サイトID"
+    site_name_col: "サイト名"
+    reward_col: "報酬額"
+
+  Felmat:
+    files: [felmat_f.csv, felmat_m.csv]
+    encoding: cp932
+    date_col: "発生日時"
+    case_col: "プロモーション"
+    promo_id_col: "プロモーションID"
+    site_col: "サイトID"
+    site_name_col: "サイト"
+    reward_col: "成果報酬（税抜）"
+
+  fukuro:
+    files: [fukuro.csv]
+    encoding: cp932
+    date_col: "Conversion日時"
+    case_col: "キャンペーン"
+    site_col: "サイト"
+    reward_col: "メディア報酬額"
+
+  # funny は成果実績が出るまでヘッダー未確認（0バイトCSV）。列名は暫定。
+  funny:
+    files: [funny.csv]
+    encoding: utf-8
+    date_col: "発生日時"
+    case_col: "広告"
+    reward_col: "報酬額"
+
+  inventas:
+    files: [invgold.csv]
+    encoding: cp932
+    date_col: "発生日時"
+    case_col: "広告"
+    site_col: "広告枠"
+    reward_col: "成果報酬額[円]"
+
+  リンクシェア:
+    files: [linkshare.csv]
+    encoding: cp932
+    date_col: "成果発生日時"
+    case_col: "ECマーチャント名"
+    promo_id_col: "マーチャントID"
+    site_col: "サイトID"
+    reward_col: "報酬額"
+
+  レントラックス:
+    files: [rentracks.csv]
+    encoding: cp932
+    date_col: "売上日時"
+    case_col: "プロダクト"
+    site_col: "サイトID"
+    site_name_col: "サイト名"
+    reward_col: "報酬額"
+
+  RESULTPLUS2:
+    files: [resultplus2.csv]
+    encoding: utf-8-sig
+    date_col: "注文日時"
+    case_col: "広告名"
+    site_col: "パートナーサイト名"
+    # 報酬額列なし（CSVに存在しない）
+
+  sonic:
+    files: [sonic.csv]
+    encoding: cp932
+    date_col: "発生日時"
+    case_col: "広告"
+    site_col: "メディア"
+    reward_col: "成果報酬額[円]"
