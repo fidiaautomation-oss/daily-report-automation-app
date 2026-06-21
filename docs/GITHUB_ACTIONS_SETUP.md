@@ -41,7 +41,7 @@ git status   # ← credentials/ .env *token*.json が「表示されない」こ
 git commit -m "init: 日報自動化システム（Yahoo/Google広告クラウド対応）"
 
 # 1-a で作った新リポジトリのURLに置き換える
-git remote add origin https://github.com/MasayukiMitomi/<新リポジトリ名>.git
+git remote add origin https://github.com/fidiaautomation-oss/daily-report-automation-app.git
 git branch -M main
 git push -u origin main
 ```
