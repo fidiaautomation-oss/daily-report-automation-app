@@ -13,7 +13,9 @@ import io
 import os
 import sys
 import logging
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
+
+JST = timezone(timedelta(hours=9))
 
 import pandas as pd
 import yaml
@@ -265,8 +267,8 @@ def main():
     import tempfile
 
     date_str = sys.argv[1] if len(sys.argv) > 1 else (
-        date.today() - timedelta(days=1)
-    ).isoformat()
+        datetime.now(JST) - timedelta(days=1)
+    ).date().isoformat()
     logger.info(f"対象日付: {date_str}")
 
     uploader = DriveUploader()

@@ -13,7 +13,18 @@ import json
 import os
 import sys
 import logging
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
+
+JST = timezone(timedelta(hours=9))
+
+
+def jst_yesterday() -> str:
+    """日本時間基準の前日（YYYY-MM-DD）。
+
+    GitHub Actionsランナーは UTC のため、JSTで計算しないと
+    Google Ads Scripts が書き出す日付と1日ずれる。
+    """
+    return (datetime.now(JST) - timedelta(days=1)).date().isoformat()
 
 import pandas as pd
 from google.oauth2.credentials import Credentials
@@ -101,9 +112,7 @@ def main():
     from phase1.drive_uploader import DriveUploader
     import tempfile
 
-    target_date = sys.argv[1] if len(sys.argv) > 1 else (
-        date.today() - timedelta(days=1)
-    ).isoformat()
+    target_date = sys.argv[1] if len(sys.argv) > 1 else jst_yesterday()
 
     fetcher = GoogleAdsFetcher()
     uploader = DriveUploader()

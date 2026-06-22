@@ -2,7 +2,9 @@ import os
 import sys
 import time
 import io
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+
+JST = timezone(timedelta(hours=9))
 
 import pandas as pd
 import requests
@@ -80,7 +82,8 @@ class YahooAdsFetcher:
         return res.json()["access_token"]
 
     def _report_date(self) -> date:
-        return date.today() - timedelta(days=1)
+        # 日本時間基準の前日（GitHub ActionsランナーはUTCのため）
+        return (datetime.now(JST) - timedelta(days=1)).date()
 
     def _headers(self, account_id) -> dict:
         # ReportDefinitionService は x-z-base-account-id ヘッダーが必須
@@ -304,7 +307,7 @@ def main():
     from phase1.drive_uploader import DriveUploader
     import tempfile
 
-    date_str = (date.today() - timedelta(days=1)).isoformat()
+    date_str = (datetime.now(JST) - timedelta(days=1)).date().isoformat()
     fetcher = YahooAdsFetcher()
     uploader = DriveUploader()
 
