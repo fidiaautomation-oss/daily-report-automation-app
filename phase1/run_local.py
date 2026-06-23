@@ -110,6 +110,20 @@ def run_yahoo(uploader, start, end) -> bool:
         return False
 
 
+def run_normalize(uploader, start, end) -> bool:
+    from phase2.export_normalized import export_for_date
+    from phase1.date_range import date_list
+
+    log = logging.getLogger("normalize")
+    try:
+        for d in date_list(start, end):
+            export_for_date(uploader, d.isoformat())
+        return True
+    except Exception as e:
+        log.error(f"ASP正規化出力: 失敗 → {e}")
+        return False
+
+
 def main():
     from phase1.date_range import resolve_range
 
@@ -128,8 +142,12 @@ def main():
     uploader = DriveUploader()
     yahoo_ok = run_yahoo(uploader, start, end)
 
+    # 3) ASP正規化CSV(UTF-8)をDriveへ出力（Apps Scriptボタン用）
+    norm_ok = run_normalize(uploader, start, end)
+
     log.info(
-        f"=== 完了 ASP成功{asp_ok}/失敗{asp_fail} / Yahoo={'OK' if yahoo_ok else 'NG'} ==="
+        f"=== 完了 ASP成功{asp_ok}/失敗{asp_fail} / Yahoo={'OK' if yahoo_ok else 'NG'}"
+        f" / 正規化={'OK' if norm_ok else 'NG'} ==="
     )
     # ASP/Yahooのいずれかが全滅なら異常終了（launchdのログで気づけるように）
     if asp_ok == 0 and not yahoo_ok:
