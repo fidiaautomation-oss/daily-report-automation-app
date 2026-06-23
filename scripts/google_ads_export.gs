@@ -1,24 +1,29 @@
 /**
  * google_ads_export.gs
  * --------------------------------------------------------------
- * 最上位の自動化用MCCに設置するGoogle Ads Script。
- * 配下（ネストされたMCC配下を含む）の全広告アカウントを巡回し、
- * 前日の広告グループ単位レポートを出力先スプレッドシートに書き出す。
+ * 4つのMCCそれぞれに設置するGoogle Ads Script。
+ * 各MCCは配下の広告アカウントを巡回し、前日の広告グループ単位レポートを
+ * 「自分専用のタブ」(google_ads_<MCC ID>) に書き出す。
+ *
+ * 同一の広告アカウントが複数MCCに紐づく場合は重複が出るが、
+ * Python側 (phase1/google_ads_fetcher.py) で全タブを結合し重複削除する。
  *
  * 取得項目はYahoo広告フェッチャーと統一:
  *   date, account_id, account_name, campaign_id, campaign_name,
  *   adgroup_id, adgroup_name, impressions, clicks, cost, conversions
  *
- * セットアップ:
- *   1. 出力先の空スプレッドシートを作成し、URLを SHEET_URL に設定
- *   2. 最上位MCCの「一括操作 → スクリプト」に本ファイルを貼り付け
- *   3. 承認・プレビュー実行で google_ads シートへの出力を確認
- *   4. 毎朝のスケジュール実行を設定
+ * セットアップ（4つのMCCそれぞれで実施）:
+ *   1. 出力先の空スプレッドシートを作成し、URLを SHEET_URL に設定（4MCC共通の1シート）
+ *   2. 各MCCの「一括操作 → スクリプト」に本ファイルを貼り付け
+ *   3. 承認・プレビュー実行で google_ads_<MCC ID> タブへの出力を確認
+ *   4. 毎朝のスケジュール実行を設定（4MCCすべて）
  */
 
 // ▼▼▼ 設定 ▼▼▼
 var SHEET_URL = 'ここに出力先スプレッドシートのURLを貼り付け';
-var SHEET_NAME = 'google_ads';
+// タブ名は実行中のMCC IDから自動決定（google_ads_<MCC ID>）。
+// 手動で固定したい場合のみ TAB_NAME_OVERRIDE に値を設定する。
+var TAB_NAME_OVERRIDE = '';
 // ▲▲▲ 設定 ▲▲▲
 
 var HEADER = [
@@ -34,6 +39,10 @@ var GAQL =
   'AND metrics.impressions > 0';
 
 function main() {
+  // 実行中のMCC IDからタブ名を決定（select前に取得する）
+  var mccId = AdsApp.currentAccount().getCustomerId().replace(/-/g, '');
+  var tabName = TAB_NAME_OVERRIDE || ('google_ads_' + mccId);
+
   var rows = [];
   var accountIterator = AdsManagerApp.accounts().get();
 
@@ -47,8 +56,8 @@ function main() {
     }
   }
 
-  writeToSheet(rows);
-  Logger.log('完了: ' + rows.length + '行を ' + SHEET_NAME + ' へ書き込みました');
+  writeToSheet(tabName, rows);
+  Logger.log('完了: ' + rows.length + '行を ' + tabName + ' へ書き込みました');
 }
 
 function collectAccount(account, rows) {
@@ -76,11 +85,11 @@ function collectAccount(account, rows) {
   }
 }
 
-function writeToSheet(rows) {
+function writeToSheet(tabName, rows) {
   var ss = SpreadsheetApp.openByUrl(SHEET_URL);
-  var sheet = ss.getSheetByName(SHEET_NAME);
+  var sheet = ss.getSheetByName(tabName);
   if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
+    sheet = ss.insertSheet(tabName);
   }
   sheet.clear();
   sheet.getRange(1, 1, 1, HEADER.length).setValues([HEADER]);

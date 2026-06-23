@@ -36,12 +36,15 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-SHEET_NAME = "google_ads"
+# 各MCCが google_ads_<MCC ID> タブに書き出す。前方一致で全タブを読む。
+SHEET_NAME_PREFIX = "google_ads"
 OUTPUT_COLUMNS = [
     "date", "account_id", "account_name",
     "campaign_id", "campaign_name", "adgroup_id", "adgroup_name",
     "impressions", "clicks", "cost", "conversions",
 ]
+# 重複判定キー（同一アカウントが複数MCCに紐づく場合の重複を除去）
+DEDUPE_KEYS = ["date", "account_id", "campaign_id", "adgroup_id"]
 
 
 class GoogleAdsFetcher:
@@ -77,8 +80,30 @@ class GoogleAdsFetcher:
             self._service = build("sheets", "v4", credentials=self._load_credentials())
         return self._service
 
+    def _list_google_tabs(self) -> list:
+        """google_ads で始まる全タブ名を返す。"""
+        meta = self.service.spreadsheets().get(
+            spreadsheetId=self.sheet_id, fields="sheets.properties(title)"
+        ).execute()
+        titles = [s["properties"]["title"] for s in meta.get("sheets", [])]
+        return [t for t in titles if t.startswith(SHEET_NAME_PREFIX)]
+
+    def _read_tab(self, tab: str) -> pd.DataFrame:
+        res = self.service.spreadsheets().values().get(
+            spreadsheetId=self.sheet_id, range=f"'{tab}'!A:K"
+        ).execute()
+        values = res.get("values", [])
+        if len(values) < 2:
+            return pd.DataFrame(columns=OUTPUT_COLUMNS)
+        header, *data = values
+        df = pd.DataFrame(data, columns=header)
+        for col in OUTPUT_COLUMNS:
+            if col not in df.columns:
+                df[col] = ""
+        return df[OUTPUT_COLUMNS].astype(str)
+
     def fetch(self, target_date: str = None) -> pd.DataFrame:
-        """出力シートを読み込みDataFrameで返す。
+        """全MCCタブ(google_ads_*)を結合し重複削除してDataFrameで返す。
 
         target_date 指定時はその日付のみに絞る。未指定（None）の場合は
         シートの全行を返す（スクリプトは前日1日分のみ出力するため、
@@ -88,25 +113,31 @@ class GoogleAdsFetcher:
             logger.warning("GOOGLE_ADS_SHEET_ID 未設定のためGoogle広告取得をスキップ")
             return pd.DataFrame(columns=OUTPUT_COLUMNS)
 
-        res = self.service.spreadsheets().values().get(
-            spreadsheetId=self.sheet_id, range=f"'{SHEET_NAME}'!A:K"
-        ).execute()
-        values = res.get("values", [])
-        if len(values) < 2:
-            logger.warning("google_ads シートにデータがありません")
+        tabs = self._list_google_tabs()
+        if not tabs:
+            logger.warning("google_ads_* タブが見つかりません")
             return pd.DataFrame(columns=OUTPUT_COLUMNS)
 
-        header, *data = values
-        df = pd.DataFrame(data, columns=header)
-        # 想定列のみ・順序を統一（不足列は空で補完）
-        for col in OUTPUT_COLUMNS:
-            if col not in df.columns:
-                df[col] = ""
-        df = df[OUTPUT_COLUMNS].astype(str)
+        frames = []
+        for tab in tabs:
+            tdf = self._read_tab(tab)
+            logger.info(f"  タブ {tab}: {len(tdf)}行")
+            if len(tdf):
+                frames.append(tdf)
+        if not frames:
+            return pd.DataFrame(columns=OUTPUT_COLUMNS)
+
+        df = pd.concat(frames, ignore_index=True)
+        before = len(df)
+        # 重複削除（同一アカウントが複数MCCに紐づく場合）
+        df = df.drop_duplicates(subset=DEDUPE_KEYS, keep="first").reset_index(drop=True)
+        removed = before - len(df)
         if target_date:
             df = df[df["date"].str.strip() == target_date]
         dates = sorted(df["date"].str.strip().unique()) if len(df) else []
-        logger.info(f"Google広告 取得: {len(df)}行 / 日付={dates}")
+        logger.info(
+            f"Google広告 取得: {len(df)}行（{len(tabs)}タブ結合・重複削除{removed}件）/ 日付={dates}"
+        )
         return df
 
     def fetch_to_csv(self, output_path: str, target_date: str = None) -> str:
