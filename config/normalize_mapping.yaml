@@ -29,11 +29,12 @@ asp_normalize:
   afb:
     files: [affiliateb.csv]
     encoding: cp932
-    date_col: "売上日時"
-    case_col: "プロダクト"
-    site_col: "サイトID"
+    date_col: "発生日"
+    case_col: "プロモーション名"
+    promo_id_col: "PID"
+    site_col: "SID"
     site_name_col: "サイト名"
-    reward_col: "報酬額"
+    reward_col: "報酬"
 
   Felmat:
     files: [felmat_f.csv, felmat_m.csv]
