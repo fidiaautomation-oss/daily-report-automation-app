@@ -51,7 +51,7 @@ def test_fetch_merges_tabs_and_dedupes():
     assert keys == {("A", "1", "10"), ("A", "1", "11"), ("B", "2", "20")}
 
 
-def test_fetch_filters_target_date():
+def test_fetch_filters_single_date():
     fetcher = GoogleAdsFetcher(sheet_id="sid")
     tabs = {
         "google_ads_111": [
@@ -60,9 +60,24 @@ def test_fetch_filters_target_date():
         ],
     }
     with patch.object(GoogleAdsFetcher, "service", _mock_service(tabs)):
-        df = fetcher.fetch("2026-06-22")
+        df = fetcher.fetch("2026-06-22", "2026-06-22")
     assert len(df) == 1
     assert df.iloc[0]["date"] == "2026-06-22"
+
+
+def test_fetch_filters_date_range():
+    fetcher = GoogleAdsFetcher(sheet_id="sid")
+    tabs = {
+        "google_ads_111": [
+            _row("2026-06-22", "A", "1", "10", "100"),
+            _row("2026-06-21", "A", "1", "11", "100"),
+            _row("2026-06-19", "A", "1", "12", "100"),  # 範囲外
+        ],
+    }
+    with patch.object(GoogleAdsFetcher, "service", _mock_service(tabs)):
+        df = fetcher.fetch("2026-06-20", "2026-06-22")
+    assert len(df) == 2
+    assert sorted(df["date"].unique()) == ["2026-06-21", "2026-06-22"]
 
 
 def test_fetch_no_tabs_returns_empty():

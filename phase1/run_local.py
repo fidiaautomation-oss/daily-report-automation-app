@@ -82,18 +82,28 @@ def run_asp(date_str: str) -> tuple[int, int]:
     return ok, fail
 
 
-def run_yahoo(uploader, date_str: str) -> bool:
+def run_yahoo(uploader, start, end) -> bool:
     from phase1.yahoo_ads_fetcher import YahooAdsFetcher
 
     log = logging.getLogger("yahoo")
     try:
         fetcher = YahooAdsFetcher()
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
-            tmp = f.name
-        fetcher.fetch_to_csv(tmp)
-        file_id = uploader.upload_csv(tmp, "yahoo_ads.csv", date_str)
-        os.unlink(tmp)
-        log.info(f"Yahoo: アップロード完了 yahoo_ads.csv ({file_id})")
+        fetcher.set_date_range(start, end)
+        df = fetcher.fetch_dataframe()
+        if df.empty:
+            log.info(f"Yahoo: 期間 {start}〜{end} のデータは0件")
+            return True
+        df["__d"] = df["date"].astype(str).str.strip().str[:10]
+        for date_str, day_df in df.groupby("__d"):
+            if not date_str:
+                continue
+            out = day_df.drop(columns="__d")
+            with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+                tmp = f.name
+            out.to_csv(tmp, index=False, encoding="utf-8-sig")
+            file_id = uploader.upload_csv(tmp, "yahoo_ads.csv", date_str)
+            os.unlink(tmp)
+            log.info(f"Yahoo: raw/{date_str}/yahoo_ads.csv ({len(out)}行) ({file_id})")
         return True
     except Exception as e:
         log.error(f"Yahoo: 失敗 → {e}")
@@ -101,18 +111,22 @@ def run_yahoo(uploader, date_str: str) -> bool:
 
 
 def main():
-    date_str = setup_logging()
+    from phase1.date_range import parse_date_range
+
+    setup_logging()
     log = logging.getLogger("main")
-    log.info(f"=== ローカル実行開始 対象日={date_str} ===")
+    start, end = parse_date_range(sys.argv[1:])
+    log.info(f"=== ローカル実行開始 期間={start}〜{end} ===")
 
-    # 1) ASPは1社ごとに別プロセスで実行（Playwright同期APIの再起動制約のため）
-    asp_ok, asp_fail = run_asp(date_str)
+    # 1) ASP（成果データ）は対象期間の末尾(最新日)で1社ごとに別プロセス実行
+    #    ※ASPは広告費ではなく成果データのため期間取得は対象外（単日）
+    asp_ok, asp_fail = run_asp(end.isoformat())
 
-    # 2) Yahooは同プロセスでOK（Playwright不使用）
+    # 2) Yahoo広告費は期間対応（日付ごとに raw/<日付>/ へ保存）
     from phase1.drive_uploader import DriveUploader
 
     uploader = DriveUploader()
-    yahoo_ok = run_yahoo(uploader, date_str)
+    yahoo_ok = run_yahoo(uploader, start, end)
 
     log.info(
         f"=== 完了 ASP成功{asp_ok}/失敗{asp_fail} / Yahoo={'OK' if yahoo_ok else 'NG'} ==="

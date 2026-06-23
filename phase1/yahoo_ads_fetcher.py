@@ -66,6 +66,14 @@ class YahooAdsFetcher:
         if not self.refresh_tokens:
             raise ValueError("YAHOO_ADS_REFRESH_TOKENS が設定されていません")
         self._access_token = None
+        # 取得対象期間（デフォルトは前日のみ）。set_date_range で変更可能。
+        yesterday = (datetime.now(JST) - timedelta(days=1)).date()
+        self._start = yesterday
+        self._end = yesterday
+
+    def set_date_range(self, start: date, end: date) -> None:
+        self._start = start
+        self._end = end
 
     # ── 認証 ────────────────────────────────────────────────
     def _get_access_token(self, refresh_token: str) -> str:
@@ -80,10 +88,6 @@ class YahooAdsFetcher:
         )
         res.raise_for_status()
         return res.json()["access_token"]
-
-    def _report_date(self) -> date:
-        # 日本時間基準の前日（GitHub ActionsランナーはUTCのため）
-        return (datetime.now(JST) - timedelta(days=1)).date()
 
     def _headers(self, account_id) -> dict:
         # ReportDefinitionService は x-z-base-account-id ヘッダーが必須
@@ -154,18 +158,19 @@ class YahooAdsFetcher:
 
     # ── レポート取得 ────────────────────────────────────────
     def _create_report(self, account_id) -> int:
-        report_date = self._report_date().strftime("%Y%m%d")
+        start = self._start.strftime("%Y%m%d")
+        end = self._end.strftime("%Y%m%d")
         account_id = int(account_id)
         body = {
             "accountId": account_id,
             "operand": [
                 {
-                    "reportName": f"daily_{account_id}_{report_date}",
+                    "reportName": f"daily_{account_id}_{start}_{end}",
                     "reportType": "ADGROUP",
                     "reportDateRangeType": "CUSTOM_DATE",
                     "dateRange": {
-                        "startDate": report_date,
-                        "endDate": report_date,
+                        "startDate": start,
+                        "endDate": end,
                     },
                     "fields": REPORT_FIELDS,
                     "reportDownloadFormat": "TSV",
@@ -234,9 +239,13 @@ class YahooAdsFetcher:
             return pd.DataFrame(columns=self.OUTPUT_COLUMNS)
         return self._download_report(account_id, job_id, account_name)
 
-    def fetch_to_csv(self, output_path: str) -> None:
+    def fetch_dataframe(self) -> pd.DataFrame:
+        """設定された期間で全アカウントのレポートを取得し結合して返す。"""
         accounts = self.discover_accounts()
-        print(f"[INFO] Yahoo広告 対象アカウント: {len(accounts)}件を自動発見")
+        print(
+            f"[INFO] Yahoo広告 対象アカウント: {len(accounts)}件 / "
+            f"期間: {self._start}〜{self._end}"
+        )
         dfs = []
         for acc in accounts:
             df = self._fetch_account(
@@ -245,11 +254,12 @@ class YahooAdsFetcher:
             if not df.empty:
                 dfs.append(df)
         if dfs:
-            result = pd.concat(dfs, ignore_index=True)
-            result = result[self.OUTPUT_COLUMNS]
-        else:
-            result = pd.DataFrame(columns=self.OUTPUT_COLUMNS)
-        result.to_csv(output_path, index=False, encoding="utf-8-sig")
+            return pd.concat(dfs, ignore_index=True)[self.OUTPUT_COLUMNS]
+        return pd.DataFrame(columns=self.OUTPUT_COLUMNS)
+
+    def fetch_to_csv(self, output_path: str) -> None:
+        """単一CSVへ保存（後方互換）。期間内の全日が1ファイルに入る。"""
+        self.fetch_dataframe().to_csv(output_path, index=False, encoding="utf-8-sig")
 
     # ── .env への反映 ──────────────────────────────────────
     def write_accounts_to_env(self, env_path: str = ".env") -> list:
@@ -305,18 +315,31 @@ class YahooAdsFetcher:
 
 def main():
     from phase1.drive_uploader import DriveUploader
+    from phase1.date_range import parse_date_range
     import tempfile
 
-    date_str = (datetime.now(JST) - timedelta(days=1)).date().isoformat()
+    start, end = parse_date_range(sys.argv[1:])
     fetcher = YahooAdsFetcher()
+    fetcher.set_date_range(start, end)
     uploader = DriveUploader()
 
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
-        tmp_path = f.name
+    df = fetcher.fetch_dataframe()
+    if df.empty:
+        print(f"Yahoo広告: 期間 {start}〜{end} のデータは0件")
+        return
 
-    fetcher.fetch_to_csv(tmp_path)
-    file_id = uploader.upload_csv(tmp_path, "yahoo_ads.csv", date_str)
-    print(f"yahoo_ads.csv アップロード完了: {file_id}")
+    # 日付ごとに分割して raw/<日付>/yahoo_ads.csv へ保存
+    df["__d"] = df["date"].astype(str).str.strip().str[:10]
+    for date_str, day_df in df.groupby("__d"):
+        if not date_str:
+            continue
+        out = day_df.drop(columns="__d")
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            tmp_path = f.name
+        out.to_csv(tmp_path, index=False, encoding="utf-8-sig")
+        file_id = uploader.upload_csv(tmp_path, "yahoo_ads.csv", date_str)
+        os.unlink(tmp_path)
+        print(f"yahoo_ads.csv → raw/{date_str}/ ({len(out)}行) ({file_id})")
 
 
 def discover():

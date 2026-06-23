@@ -102,12 +102,11 @@ class GoogleAdsFetcher:
                 df[col] = ""
         return df[OUTPUT_COLUMNS].astype(str)
 
-    def fetch(self, target_date: str = None) -> pd.DataFrame:
+    def fetch(self, start: str = None, end: str = None) -> pd.DataFrame:
         """全MCCタブ(google_ads_*)を結合し重複削除してDataFrameで返す。
 
-        target_date 指定時はその日付のみに絞る。未指定（None）の場合は
-        シートの全行を返す（スクリプトは前日1日分のみ出力するため、
-        タイムゾーン計算に依存せずシートの内容をそのまま採用する）。
+        start/end（YYYY-MM-DD）を指定するとその期間に絞る。未指定の場合は
+        シートの全行を返す（スクリプトが書き出した範囲をそのまま採用）。
         """
         if not self.sheet_id:
             logger.warning("GOOGLE_ADS_SHEET_ID 未設定のためGoogle広告取得をスキップ")
@@ -132,41 +131,48 @@ class GoogleAdsFetcher:
         # 重複削除（同一アカウントが複数MCCに紐づく場合）
         df = df.drop_duplicates(subset=DEDUPE_KEYS, keep="first").reset_index(drop=True)
         removed = before - len(df)
-        if target_date:
-            df = df[df["date"].str.strip() == target_date]
-        dates = sorted(df["date"].str.strip().unique()) if len(df) else []
+        d = df["date"].astype(str).str.strip().str[:10]
+        if start:
+            df = df[d >= start]
+            d = d[df.index]
+        if end:
+            df = df[d <= end]
+        df = df.reset_index(drop=True)
+        dates = sorted(df["date"].astype(str).str.strip().str[:10].unique()) if len(df) else []
         logger.info(
             f"Google広告 取得: {len(df)}行（{len(tabs)}タブ結合・重複削除{removed}件）/ 日付={dates}"
         )
         return df
 
-    def fetch_to_csv(self, output_path: str, target_date: str = None) -> str:
-        """シートを取得しCSV保存。保存したデータの日付（YYYY-MM-DD）を返す。"""
-        df = self.fetch(target_date)
-        df.to_csv(output_path, index=False, encoding="utf-8-sig")
-        # データに含まれる日付を採用（複数あれば最新）。空なら target_date / JST前日
-        if len(df) and df["date"].str.strip().any():
-            return sorted(df["date"].str.strip().unique())[-1]
-        return target_date or jst_yesterday()
-
 
 def main():
     from phase1.drive_uploader import DriveUploader
+    from phase1.date_range import parse_date_range
     import tempfile
 
-    # 引数があればその日付に絞る。無ければシートの内容をそのまま使う。
-    target_date = sys.argv[1] if len(sys.argv) > 1 else None
+    # 期間指定（引数なし=前日のみ / N日 / START END）。最大14日。
+    start, end = parse_date_range(sys.argv[1:])
+    start_s, end_s = start.isoformat(), end.isoformat()
 
     fetcher = GoogleAdsFetcher()
     uploader = DriveUploader()
+    df = fetcher.fetch(start_s, end_s)
+    if df.empty:
+        print(f"Google広告: 期間 {start_s}〜{end_s} のデータは0件")
+        return
 
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
-        tmp_path = f.name
-
-    data_date = fetcher.fetch_to_csv(tmp_path, target_date)
-    file_id = uploader.upload_csv(tmp_path, "google_ads.csv", data_date, top_folder="raw")
-    os.unlink(tmp_path)
-    print(f"google_ads.csv アップロード完了: raw/{data_date}/ ({file_id})")
+    # 日付ごとに分割して raw/<日付>/google_ads.csv へ保存
+    df["__d"] = df["date"].astype(str).str.strip().str[:10]
+    for data_date, day_df in df.groupby("__d"):
+        if not data_date:
+            continue
+        out = day_df.drop(columns="__d")
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            tmp_path = f.name
+        out.to_csv(tmp_path, index=False, encoding="utf-8-sig")
+        file_id = uploader.upload_csv(tmp_path, "google_ads.csv", data_date, top_folder="raw")
+        os.unlink(tmp_path)
+        print(f"google_ads.csv → raw/{data_date}/ ({len(out)}行) ({file_id})")
 
 
 if __name__ == "__main__":

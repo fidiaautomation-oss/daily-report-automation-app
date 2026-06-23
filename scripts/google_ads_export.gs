@@ -31,11 +31,12 @@ var HEADER = [
   'adgroup_id', 'adgroup_name', 'impressions', 'clicks', 'cost', 'conversions'
 ];
 
+// 最大2週間分を出力する（Python側で必要な期間に絞る）。
 var GAQL =
   'SELECT segments.date, customer.id, customer.descriptive_name, ' +
   'campaign.id, campaign.name, ad_group.id, ad_group.name, ' +
   'metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions ' +
-  'FROM ad_group WHERE segments.date DURING YESTERDAY ' +
+  'FROM ad_group WHERE segments.date DURING LAST_14_DAYS ' +
   'AND metrics.impressions > 0';
 
 function main() {
