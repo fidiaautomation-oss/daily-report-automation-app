@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.suprieve.daily-report-local</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/mitomi/Claude/daily-report-automation/scripts/run_local.sh</string>
+  </array>
+  <!-- 毎朝 7:00（JST）に実行。前日分のASP・Yahoo広告を取得してDrive保存 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>7</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/mitomi/Claude/daily-report-automation/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/mitomi/Claude/daily-report-automation/logs/launchd.err.log</string>
+  <!-- スリープ等で実行時刻を逃した場合、起動時に追いかけ実行する -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

@@ -22,3 +22,6 @@ github/
 # ダウンロード一時ファイル
 data/raw/
 downloads/
+
+# 実行ログ
+logs/

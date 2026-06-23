@@ -76,6 +76,12 @@ class AspDownloader:
         page.click('button[type="submit"]')
         page.wait_for_load_state("networkidle")
 
+        # ログイン成否を確認（失敗時はログインページに留まる）
+        if "/login" in page.url:
+            raise RuntimeError(
+                "FELMATログイン失敗（認証情報を確認してください）"
+            )
+
         # 成果発生ページへ
         page.goto("https://www.felmat.net/publisher/conversion")
         page.wait_for_load_state("networkidle")
@@ -652,23 +658,45 @@ class AspDownloader:
 
 
 def main():
+    """1社のASPをダウンロードしてDriveへ保存する。
+
+    使い方:
+        python -m phase1.asp_downloader <asp_name> [YYYY-MM-DD]
+
+    Playwright(同期API)は1プロセスで複数回起動できないため、
+    run_local からは ASP 1社ごとに本コマンドを別プロセスで呼び出す。
+    """
+    import sys
     from phase1.drive_uploader import DriveUploader
 
-    logging.basicConfig(level=logging.INFO)
-    date_str = (date.today() - timedelta(days=1)).isoformat()
-    downloader = AspDownloader()
-    uploader = DriveUploader()
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    jst = timezone(timedelta(hours=9))
 
-    # FELMATのみ（動作確認済み）
-    for asp_name in ["felmat_f", "felmat_m"]:
-        try:
-            local_path = downloader.download(asp_name)
-            site = downloader.sites[asp_name]
-            output_filename = site.get("output_filename", f"{asp_name}.csv")
-            file_id = uploader.upload_csv(local_path, output_filename, date_str)
-            print(f"{output_filename} アップロード完了: {file_id}")
-        except Exception as e:
-            print(f"{asp_name} 失敗: {e}")
+    args = sys.argv[1:]
+    if not args:
+        print("usage: python -m phase1.asp_downloader <asp_name> [YYYY-MM-DD]")
+        sys.exit(2)
+    asp_name = args[0]
+    date_str = args[1] if len(args) > 1 else (
+        datetime.now(jst) - timedelta(days=1)
+    ).date().isoformat()
+
+    downloader = AspDownloader()
+    try:
+        local_path = downloader.download(asp_name)
+    except Exception as e:
+        print(f"{asp_name}: ダウンロード失敗 → {e}")
+        sys.exit(1)
+
+    if local_path is None:
+        print(f"{asp_name}: スキップ")
+        return
+
+    site = downloader.sites[asp_name]
+    output_filename = site.get("output_filename", f"{asp_name}.csv")
+    uploader = DriveUploader()
+    file_id = uploader.upload_csv(local_path, output_filename, date_str)
+    print(f"{asp_name}: アップロード完了 {output_filename} ({file_id})")
 
 
 if __name__ == "__main__":
