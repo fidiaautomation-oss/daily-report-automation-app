@@ -52,3 +52,39 @@ def test_range_clamped_to_14(fixed_yesterday):
 def test_date_list(fixed_yesterday):
     days = dr.date_list(date(2026, 6, 20), date(2026, 6, 22))
     assert days == [date(2026, 6, 20), date(2026, 6, 21), date(2026, 6, 22)]
+
+
+def test_resolve_range_cli_wins(fixed_yesterday):
+    # CLI引数があればシートより優先
+    start, end = dr.resolve_range(["3"])
+    assert start == date(2026, 6, 20) and end == fixed_yesterday
+
+
+def test_resolve_range_from_sheet(fixed_yesterday, monkeypatch):
+    import phase2.sheet_reader as sr
+
+    class FakeReader:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_fetch_date_range(self):
+            return date(2026, 6, 15), date(2026, 6, 18)
+
+    monkeypatch.setattr(sr, "SheetReader", FakeReader)
+    start, end = dr.resolve_range([])
+    assert start == date(2026, 6, 15) and end == date(2026, 6, 18)
+
+
+def test_resolve_range_fallback_yesterday(fixed_yesterday, monkeypatch):
+    import phase2.sheet_reader as sr
+
+    class FakeReader:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_fetch_date_range(self):
+            return None, None
+
+    monkeypatch.setattr(sr, "SheetReader", FakeReader)
+    start, end = dr.resolve_range([])
+    assert start == fixed_yesterday and end == fixed_yesterday

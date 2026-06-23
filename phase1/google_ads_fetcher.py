@@ -147,11 +147,11 @@ class GoogleAdsFetcher:
 
 def main():
     from phase1.drive_uploader import DriveUploader
-    from phase1.date_range import parse_date_range
+    from phase1.date_range import resolve_range
     import tempfile
 
     # 期間指定（引数なし=前日のみ / N日 / START END）。最大14日。
-    start, end = parse_date_range(sys.argv[1:])
+    start, end = resolve_range(sys.argv[1:])
     start_s, end_s = start.isoformat(), end.isoformat()
 
     fetcher = GoogleAdsFetcher()

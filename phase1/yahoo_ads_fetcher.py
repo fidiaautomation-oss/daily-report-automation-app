@@ -315,10 +315,10 @@ class YahooAdsFetcher:
 
 def main():
     from phase1.drive_uploader import DriveUploader
-    from phase1.date_range import parse_date_range
+    from phase1.date_range import resolve_range
     import tempfile
 
-    start, end = parse_date_range(sys.argv[1:])
+    start, end = resolve_range(sys.argv[1:])
     fetcher = YahooAdsFetcher()
     fetcher.set_date_range(start, end)
     uploader = DriveUploader()

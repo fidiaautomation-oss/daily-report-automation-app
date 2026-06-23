@@ -125,6 +125,43 @@ class SheetReader:
         return None
 
     # ── 担当設定の読み込み ──────────────────────────────────
+    def get_fetch_date_range(self) -> tuple:
+        """案件（◯◯さん）タブの I3（開始）・K3（終了）から取得日範囲を読む。
+
+        最初に見つかった案件タブの I3:K3 を参照する。形式は YYYY/MM/DD。
+        読めない場合は (None, None) を返す。最大14日にクランプする。
+        """
+        from datetime import date, timedelta
+
+        case_tabs = [t["title"] for t in self._list_tabs() if CASE_TAB_RE.match(t["title"])]
+        if not case_tabs:
+            return None, None
+        vals = self._get_values(f"'{case_tabs[0]}'!I3:K3")
+        if not vals or not vals[0]:
+            return None, None
+        row = vals[0]
+
+        def parse(s):
+            s = str(s).strip().replace("-", "/")
+            for fmt in ("%Y/%m/%d",):
+                try:
+                    y, m, d = [int(x) for x in s.split("/")]
+                    return date(y, m, d)
+                except (ValueError, TypeError):
+                    return None
+
+        start = parse(row[0]) if len(row) > 0 else None
+        end = parse(row[2]) if len(row) > 2 else (start)
+        if start is None and end is None:
+            return None, None
+        start = start or end
+        end = end or start
+        if start > end:
+            start, end = end, start
+        if (end - start).days > 13:
+            start = end - timedelta(days=13)
+        return start, end
+
     def read_assignments(self) -> dict:
         """全運用者の担当設定を読み込む。
 

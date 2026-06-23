@@ -49,3 +49,23 @@ def date_list(start: date, end: date) -> list:
     """start〜end（両端含む）の date リスト。"""
     days = (end - start).days
     return [start + timedelta(days=i) for i in range(days + 1)]
+
+
+def resolve_range(args: list) -> tuple:
+    """取得期間を決定する（優先順位: CLI引数 > スプレッドシート > 前日）。
+
+    CLI引数があればそれを使う。無ければ案件シートの I3:K3 を参照する。
+    どちらも無効なら前日のみ。
+    """
+    if args:
+        return parse_date_range(args)
+    try:
+        from phase2.sheet_reader import SheetReader
+
+        start, end = SheetReader().get_fetch_date_range()
+        if start and end:
+            return start, end
+    except Exception as e:  # シート読込失敗時は前日にフォールバック
+        print(f"[WARN] 取得日範囲のシート読込に失敗、前日のみ取得します: {e}")
+    y = jst_yesterday()
+    return y, y
