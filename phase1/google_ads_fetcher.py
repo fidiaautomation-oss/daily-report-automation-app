@@ -77,8 +77,13 @@ class GoogleAdsFetcher:
             self._service = build("sheets", "v4", credentials=self._load_credentials())
         return self._service
 
-    def fetch(self, target_date: str) -> pd.DataFrame:
-        """出力シートを読み込み、対象日のデータをDataFrameで返す。"""
+    def fetch(self, target_date: str = None) -> pd.DataFrame:
+        """出力シートを読み込みDataFrameで返す。
+
+        target_date 指定時はその日付のみに絞る。未指定（None）の場合は
+        シートの全行を返す（スクリプトは前日1日分のみ出力するため、
+        タイムゾーン計算に依存せずシートの内容をそのまま採用する）。
+        """
         if not self.sheet_id:
             logger.warning("GOOGLE_ADS_SHEET_ID 未設定のためGoogle広告取得をスキップ")
             return pd.DataFrame(columns=OUTPUT_COLUMNS)
@@ -98,21 +103,28 @@ class GoogleAdsFetcher:
             if col not in df.columns:
                 df[col] = ""
         df = df[OUTPUT_COLUMNS].astype(str)
-        # 対象日のみに絞る（スクリプトは前日のみ出力するが保険）
-        df = df[df["date"].str.strip() == target_date]
-        logger.info(f"Google広告 {target_date}: {len(df)}行")
+        if target_date:
+            df = df[df["date"].str.strip() == target_date]
+        dates = sorted(df["date"].str.strip().unique()) if len(df) else []
+        logger.info(f"Google広告 取得: {len(df)}行 / 日付={dates}")
         return df
 
-    def fetch_to_csv(self, output_path: str, target_date: str) -> None:
+    def fetch_to_csv(self, output_path: str, target_date: str = None) -> str:
+        """シートを取得しCSV保存。保存したデータの日付（YYYY-MM-DD）を返す。"""
         df = self.fetch(target_date)
         df.to_csv(output_path, index=False, encoding="utf-8-sig")
+        # データに含まれる日付を採用（複数あれば最新）。空なら target_date / JST前日
+        if len(df) and df["date"].str.strip().any():
+            return sorted(df["date"].str.strip().unique())[-1]
+        return target_date or jst_yesterday()
 
 
 def main():
     from phase1.drive_uploader import DriveUploader
     import tempfile
 
-    target_date = sys.argv[1] if len(sys.argv) > 1 else jst_yesterday()
+    # 引数があればその日付に絞る。無ければシートの内容をそのまま使う。
+    target_date = sys.argv[1] if len(sys.argv) > 1 else None
 
     fetcher = GoogleAdsFetcher()
     uploader = DriveUploader()
@@ -120,10 +132,10 @@ def main():
     with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
         tmp_path = f.name
 
-    fetcher.fetch_to_csv(tmp_path, target_date)
-    file_id = uploader.upload_csv(tmp_path, "google_ads.csv", target_date, top_folder="raw")
+    data_date = fetcher.fetch_to_csv(tmp_path, target_date)
+    file_id = uploader.upload_csv(tmp_path, "google_ads.csv", data_date, top_folder="raw")
     os.unlink(tmp_path)
-    print(f"google_ads.csv アップロード完了: {file_id}")
+    print(f"google_ads.csv アップロード完了: raw/{data_date}/ ({file_id})")
 
 
 if __name__ == "__main__":
