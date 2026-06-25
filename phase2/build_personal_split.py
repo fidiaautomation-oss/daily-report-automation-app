@@ -118,9 +118,44 @@ class PersonalSplitter:
         return out
 
 
+def _upload_sources(uploader, person, date_str, sources) -> list:
+    """{ソース: DataFrame} を personal/<日付>/ へ保存。生成ファイル名のリストを返す。"""
+    made = []
+    for source, df in sources.items():
+        fname = f"{_safe(person)}_{_safe(source)}.csv"
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            tmp = f.name
+        df.to_csv(tmp, index=False, encoding="utf-8-sig")
+        uploader.upload_csv(tmp, fname, date_str, top_folder="personal")
+        os.unlink(tmp)
+        made.append(fname)
+        logger.info(f"  [{date_str}] {person}/{source}: {len(df)}行 → personal/{date_str}/{fname}")
+    return made
+
+
+def generate_for_person(uploader, splitter, person, assignment, start, end) -> list:
+    """1担当者分を期間ぶん生成する。生成した (日付, ファイル名) のリストを返す。"""
+    from phase1.date_range import date_list
+
+    made = []
+    for d in date_list(start, end):
+        date_str = d.isoformat()
+        raw_files = uploader.download_folder_csvs(date_str, top_folder="raw")
+        if not raw_files:
+            logger.warning(f"raw/{date_str}/ にデータがありません・スキップ")
+            continue
+        sources = splitter.build_for_person(raw_files, assignment)
+        if not sources:
+            logger.info(f"  [{date_str}] {person}: 該当データなし")
+            continue
+        for fname in _upload_sources(uploader, person, date_str, sources):
+            made.append((date_str, fname))
+    return made
+
+
 def main():
     from phase1.drive_uploader import DriveUploader
-    from phase1.date_range import resolve_range, date_list
+    from phase1.date_range import resolve_range
     from phase2.sheet_reader import SheetReader
 
     start, end = resolve_range(sys.argv[1:])
@@ -131,25 +166,8 @@ def main():
     assignments = SheetReader().read_assignments()
     logger.info(f"対象運用者: {list(assignments.keys())}")
 
-    for d in date_list(start, end):
-        date_str = d.isoformat()
-        raw_files = uploader.download_folder_csvs(date_str, top_folder="raw")
-        if not raw_files:
-            logger.warning(f"raw/{date_str}/ にデータがありません・スキップ")
-            continue
-        for person, assignment in assignments.items():
-            sources = splitter.build_for_person(raw_files, assignment)
-            if not sources:
-                logger.info(f"  [{date_str}] {person}: 該当データなし")
-                continue
-            for source, df in sources.items():
-                fname = f"{_safe(person)}_{_safe(source)}.csv"
-                with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
-                    tmp = f.name
-                df.to_csv(tmp, index=False, encoding="utf-8-sig")
-                fid = uploader.upload_csv(tmp, fname, date_str, top_folder="personal")
-                os.unlink(tmp)
-                logger.info(f"  [{date_str}] {person}/{source}: {len(df)}行 → personal/{date_str}/{fname}")
+    for person, assignment in assignments.items():
+        generate_for_person(uploader, splitter, person, assignment, start, end)
 
 
 if __name__ == "__main__":

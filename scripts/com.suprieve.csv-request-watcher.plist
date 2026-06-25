@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.suprieve.csv-request-watcher</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/mitomi/Claude/daily-report-automation/scripts/run_request_watcher.sh</string>
+  </array>
+  <!-- 120秒おきに「CSV生成リクエスト」を確認し、pending依頼を処理する -->
+  <key>StartInterval</key>
+  <integer>120</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/mitomi/Claude/daily-report-automation/logs/watcher.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/mitomi/Claude/daily-report-automation/logs/watcher.err.log</string>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>

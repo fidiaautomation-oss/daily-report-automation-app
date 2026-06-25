@@ -125,6 +125,57 @@ class SheetReader:
         return None
 
     # ── 担当設定の読み込み ──────────────────────────────────
+    # ── CSV生成リクエスト（ボタン連携） ────────────────────
+    REQUEST_TAB = "CSV生成リクエスト"
+    REQUEST_HEADER = ["日時", "担当者", "開始日", "終了日", "ステータス", "結果"]
+
+    def read_pending_requests(self) -> list:
+        """CSV生成リクエストタブから status='pending' の依頼を返す。
+
+        戻り値: [{"row": シート行番号(1始まり), "person", "start", "end"}, ...]
+        """
+        tabs = {t["title"] for t in self._list_tabs()}
+        if self.REQUEST_TAB not in tabs:
+            return []
+        rows = self._get_values(f"'{self.REQUEST_TAB}'!A1:F1000")
+        if not rows:
+            return []
+        pending = []
+        # 1行目はヘッダー想定。2行目以降を見る。
+        for i, row in enumerate(rows[1:], start=2):
+            def c(idx):
+                return row[idx].strip() if idx < len(row) and row[idx] else ""
+            status = c(4)
+            if status.lower() != "pending":
+                continue
+            pending.append({
+                "row": i,
+                "person": c(1),
+                "start": c(2),
+                "end": c(3),
+            })
+        return pending
+
+    def update_request_status(self, row: int, status: str, result: str = "") -> None:
+        self.service.spreadsheets().values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"'{self.REQUEST_TAB}'!E{row}:F{row}",
+            valueInputOption="RAW",
+            body={"values": [[status, result]]},
+        ).execute()
+
+    def ensure_request_tab(self) -> None:
+        tabs = {t["title"]: t["sheetId"] for t in self._list_tabs()}
+        if self.REQUEST_TAB in tabs:
+            return
+        self._ensure_tab(self.REQUEST_TAB, tabs)
+        self.service.spreadsheets().values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"'{self.REQUEST_TAB}'!A1",
+            valueInputOption="RAW",
+            body={"values": [self.REQUEST_HEADER]},
+        ).execute()
+
     def get_fetch_date_range(self) -> tuple:
         """案件（◯◯さん）タブの I3（開始）・K3（終了）から取得日範囲を読む。
 
