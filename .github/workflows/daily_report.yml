@@ -41,3 +41,8 @@ jobs:
 
       - name: Google広告データ取得 → Drive保存
         run: python -m phase1.google_ads_fetcher
+
+      - name: マスタ更新（広告マスタにYahoo/Google反映・案件名/サイトも）
+        # Drive最新データ(Yahooはローカル7時/Googleは直前/ASP正規化はローカル7時)で
+        # 案件管理シートのマスタと連動プルダウンを更新する（毎朝8〜9時想定）
+        run: python -m phase2.refresh_masters
