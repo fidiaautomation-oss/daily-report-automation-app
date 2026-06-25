@@ -265,7 +265,9 @@ class SheetReader:
 
                 platforms = []
                 for row in rows[hi + 1:]:
-                    platform = cell(row, "配信プラットフォーム")
+                    # 突合は E列「プラットフォーム（自動）」(Yahoo/Google) を使う。
+                    # D列「配信プラットフォーム」(YSA等) は表示用ラベル。
+                    platform = cell(row, "プラットフォーム") or cell(row, "配信プラットフォーム")
                     pid = cell(row, "キャンペーンor広告グループID")
                     if not platform or not pid:
                         continue
@@ -370,24 +372,26 @@ class SheetReader:
                     validations.append(self._validation_request(
                         tabs[case_tab], r, 5, helper_tab, h_site))
 
-            # --- 配信PFタブ: E=キャンペーン名プルダウン / G=ID自動
+            # --- 配信PFタブ（D:配信PF / E:プラットフォーム / F:キャンペーン名 /
+            #     G:取得単位 / H:ID自動）
+            #     F=キャンペーン名は E(プラットフォーム=Yahoo/Google) と G(取得単位) に連動
             if pf_tab in tabs:
                 for i in range(INPUT_ROWS):
                     r = DATA_START_ROW + i
                     h_ad = 1 + INPUT_ROWS * 2 + i   # ヘルパー: 広告名称候補行
                     helper_rows.append((h_ad, (
                         f"=IFERROR(TRANSPOSE(UNIQUE(FILTER('{AD_MASTER_TAB}'!C:C,"
-                        f"('{AD_MASTER_TAB}'!A:A='{pf_tab}'!D{r})*"
-                        f"(('{AD_MASTER_TAB}'!B:B='{pf_tab}'!F{r})+('{pf_tab}'!F{r}=\"\"))))),\"\")"
+                        f"('{AD_MASTER_TAB}'!A:A='{pf_tab}'!E{r})*"
+                        f"(('{AD_MASTER_TAB}'!B:B='{pf_tab}'!G{r})+('{pf_tab}'!G{r}=\"\"))))),\"\")"
                     )))
-                    formulas.append((pf_tab, f"G{r}", (
-                        f"=IFERROR(XLOOKUP('{pf_tab}'!D{r}&\"|\"&'{pf_tab}'!F{r}&\"|\"&'{pf_tab}'!E{r},"
+                    formulas.append((pf_tab, f"H{r}", (
+                        f"=IFERROR(XLOOKUP('{pf_tab}'!E{r}&\"|\"&'{pf_tab}'!G{r}&\"|\"&'{pf_tab}'!F{r},"
                         f"ARRAYFORMULA('{AD_MASTER_TAB}'!A:A&\"|\"&'{AD_MASTER_TAB}'!B:B&\"|\"&'{AD_MASTER_TAB}'!C:C),"
                         f"'{AD_MASTER_TAB}'!D:D),\"\")"
                     )))
-                    # E列（キャンペーン名）の連動プルダウン
+                    # F列（キャンペーン名）の連動プルダウン
                     validations.append(self._validation_request(
-                        tabs[pf_tab], r, 4, helper_tab, h_ad))
+                        tabs[pf_tab], r, 5, helper_tab, h_ad))
 
             # ヘルパータブへ数式書き込み（A列のみ。横に展開される）
             data = [
