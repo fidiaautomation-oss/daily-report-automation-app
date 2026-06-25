@@ -125,11 +125,11 @@ def run_normalize(uploader, start, end) -> bool:
 
 
 def main():
-    from phase1.date_range import resolve_range
+    from phase1.date_range import parse_date_range
 
     setup_logging()
     log = logging.getLogger("main")
-    start, end = resolve_range(sys.argv[1:])
+    start, end = parse_date_range(sys.argv[1:])
     log.info(f"=== ローカル実行開始 期間={start}〜{end} ===")
 
     # 1) ASP（成果データ）は対象期間の末尾(最新日)で1社ごとに別プロセス実行

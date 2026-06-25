@@ -67,9 +67,9 @@ def export_for_date(uploader, date_str: str) -> int:
 
 def main():
     from phase1.drive_uploader import DriveUploader
-    from phase1.date_range import resolve_range, date_list
+    from phase1.date_range import parse_date_range, date_list
 
-    start, end = resolve_range(sys.argv[1:])
+    start, end = parse_date_range(sys.argv[1:])
     logger.info(f"ASP正規化出力 期間: {start}〜{end}")
 
     uploader = DriveUploader()

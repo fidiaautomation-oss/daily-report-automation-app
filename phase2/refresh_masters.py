@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 
 def main():
     from phase1.drive_uploader import DriveUploader
-    from phase1.date_range import resolve_range
+    from phase1.date_range import parse_date_range
     from phase2.personal_csv_builder import PersonalCsvBuilder
     from phase2.sheet_reader import SheetReader
 
     # 期間の末尾（最新日）のデータでマスタを更新する
-    _, end = resolve_range(sys.argv[1:])
+    _, end = parse_date_range(sys.argv[1:])
     date_str = end.isoformat()
     logger.info(f"マスタ更新 対象日: {date_str}")
 
